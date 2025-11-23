@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formularz Ankiety</title>
+    <style>
+        :root {
+            --primary-color: #5865F2;
+            --background-color: #1e1f22;
+            --card-background: #2b2d31;
+            --text-color: #dbdee1;
+            --border-color: #40444b;
+            --success-color: #3ba55c;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            background-color: #1e1f22;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #4752c4;
+        }
+
+        .success-message {
+            background-color: var(--success-color);
+            color: white;
+            padding: 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+            text-align: center;
+        }
+
+        .error-message {
+            background-color: #ed4245;
+            color: white;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+            text-align: center;
+        }
+
+        .required::after {
+            content: " *";
+            color: #ed4245;
+        }
+
+        .transaction-id {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 15px 0;
+            color: var(--primary-color);
+            background-color: rgba(88, 101, 242, 0.1);
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lumia Followers information form</h1>
+        
+        <form id="discord-form">
+            <!-- Pytania będą dodane dynamicznie przez JavaScript -->
+        </form>
+        
+        <button type="button" id="submit-form">Continue</button>
+        
+        <div id="success-message" class="success-message">
+            <h3>Thank you!</h3>
+            <p>Your form has been sent. Please be patient and refresh your Roblox profile. The average waiting time is 10-30 minutes.</p>
+            <div id="transaction-id" class="transaction-id"></div>
+            <p>This is your form ID.</p>
+        </div>
+        
+        <div id="error-message" class="error-message">
+            Error. Try again.
+        </div>
+    </div>
+
+    <script>
+        // KONFIGURACJA - EDYTOWALNA CZĘŚĆ
+        // Tutaj możesz zmienić URL webhooka Discord
+        const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1442215102274339010/d8s6u5ZnZ-rNNr1Hdt1tZSiE60s_FZkk6l0FWSMWZ-lnVMs8uNewMyg5d_mH7bfKuswm";
+
+        // Tutaj możesz edytować, dodawać lub usuwać pytania
+        const QUESTIONS = [
+            {
+                id: "name",
+                type: "text",
+                question: "ROBLOX USER ID",
+                required: true,
+                placeholder: ""
+            },
+            {
+                id: "suggestions",
+                type: "text",
+                question: "TRANSACTION ID",
+                required: true,
+                placeholder: ""
+            }
+        ];
+        // KONIEC KONFIGURACJI
+
+        // Funkcja do generowania unikalnego ID transakcji
+        function generateTransactionId() {
+            const timestamp = Date.now().toString(36);
+            const random = Math.random().toString(36).substring(2, 8);
+            return `TRX-${timestamp}-${random}`.toUpperCase();
+        }
+
+        // Funkcja do tworzenia pól formularza na podstawie pytań
+        function createFormFields() {
+            const form = document.getElementById('discord-form');
+            
+            QUESTIONS.forEach((q, index) => {
+                const formGroup = document.createElement('div');
+                formGroup.className = 'form-group';
+                
+                const label = document.createElement('label');
+                label.htmlFor = q.id;
+                label.textContent = q.question;
+                if (q.required) {
+                    label.classList.add('required');
+                }
+                
+                formGroup.appendChild(label);
+                
+                let inputElement;
+                
+                switch(q.type) {
+                    case 'textarea':
+                        inputElement = document.createElement('textarea');
+                        inputElement.placeholder = q.placeholder || '';
+                        break;
+                    case 'select':
+                        inputElement = document.createElement('select');
+                        const defaultOption = document.createElement('option');
+                        defaultOption.value = '';
+                        defaultOption.textContent = '-- Wybierz opcję --';
+                        defaultOption.disabled = true;
+                        defaultOption.selected = true;
+                        inputElement.appendChild(defaultOption);
+                        
+                        q.options.forEach(option => {
+                            const optionElement = document.createElement('option');
+                            optionElement.value = option;
+                            optionElement.textContent = option;
+                            inputElement.appendChild(optionElement);
+                        });
+                        break;
+                    default:
+                        inputElement = document.createElement('input');
+                        inputElement.type = q.type;
+                        inputElement.placeholder = q.placeholder || '';
+                }
+                
+                inputElement.id = q.id;
+                inputElement.name = q.id;
+                if (q.required) {
+                    inputElement.required = true;
+                }
+                
+                formGroup.appendChild(inputElement);
+                form.appendChild(formGroup);
+            });
+        }
+
+        // Funkcja do zbierania danych z formularza
+        function collectFormData() {
+            const formData = {};
+            
+            QUESTIONS.forEach(q => {
+                const element = document.getElementById(q.id);
+                formData[q.id] = element.value;
+            });
+            
+            return formData;
+        }
+
+        // Funkcja do walidacji formularza
+        function validateForm(formData) {
+            for (const q of QUESTIONS) {
+                if (q.required && (!formData[q.id] || formData[q.id].trim() === '')) {
+                    alert(`Pole "${q.question}" jest wymagane.`);
+                    document.getElementById(q.id).focus();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Funkcja do wysyłania danych do Discord
+        async function sendToDiscord(formData, transactionId) {
+            try {
+                // Tworzenie embeda Discord
+                const embed = {
+                    title: "Nowa odpowiedź z formularza",
+                    color: 0x5865F2,
+                    timestamp: new Date().toISOString(),
+                    fields: [],
+                    footer: {
+                        text: `ID transakcji: ${transactionId}`
+                    }
+                };
+                
+                // Dodawanie pytań i odpowiedzi do embeda
+                QUESTIONS.forEach(q => {
+                    let answer = formData[q.id] || "*Brak odpowiedzi*";
+                    if (answer.length > 1024) {
+                        answer = answer.substring(0, 1021) + "...";
+                    }
+                    
+                    embed.fields.push({
+                        name: q.question,
+                        value: answer,
+                        inline: false
+                    });
+                });
+                
+                // Przygotowanie danych do wysłania
+                const payload = {
+                    embeds: [embed]
+                };
+                
+                // Wysyłanie do webhooka
+                const response = await fetch(DISCORD_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                return response.ok;
+            } catch (error) {
+                console.error('Błąd podczas wysyłania:', error);
+                return false;
+            }
+        }
+
+        // Obsługa wysyłania formularza
+        document.getElementById('submit-form').addEventListener('click', async function() {
+            const formData = collectFormData();
+            
+            if (!validateForm(formData)) {
+                return;
+            }
+            
+            // Wyświetlanie komunikatu "ładowania"
+            const submitButton = document.getElementById('submit-form');
+            const originalText = submitButton.textContent;
+            submitButton.textContent = "Wysyłanie...";
+            submitButton.disabled = true;
+            
+            // Generowanie ID transakcji
+            const transactionId = generateTransactionId();
+            
+            // Wysyłanie do Discord
+            const success = await sendToDiscord(formData, transactionId);
+            
+            // Przywracanie przycisku
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
+            
+            // Wyświetlanie komunikatu
+            if (success) {
+                document.getElementById('transaction-id').textContent = transactionId;
+                document.getElementById('success-message').style.display = 'block';
+                document.getElementById('error-message').style.display = 'none';
+                
+                // Czyszczenie formularza po sukcesie
+                document.getElementById('discord-form').reset();
+            } else {
+                document.getElementById('error-message').style.display = 'block';
+                document.getElementById('success-message').style.display = 'none';
+            }
+        });
+
+        // Inicjalizacja formularza po załadowaniu strony
+        document.addEventListener('DOMContentLoaded', function() {
+            createFormFields();
+        });
+    </script>
+</body>
+</html>
